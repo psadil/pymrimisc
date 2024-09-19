@@ -13,7 +13,7 @@ def sd_hIQR(x, d=1):
 
 
 def get_zd(D: pl.Series) -> np.ndarray:
-    DV2 = D.drop_nans().to_numpy() * 4
+    DV2 = D.drop_nans().drop_nulls().to_numpy() * 4
     mu_0 = np.median(DV2)  # pg 305
     sigma_0 = sd_hIQR(DV2, d=3)  # pg 305: cube root power trans
     v = 2 * mu_0**2 / sigma_0**2
@@ -46,11 +46,14 @@ def get_dvars(x: np.ndarray) -> pl.DataFrame:
         .unpivot(index="t")
         .with_columns(
             A=pl.col("value") ** 2,
-            diff=pl.col("value").diff().over("variable", order_by="t"),
+            D=pl.col("value").diff().over("variable", order_by="t"),
+            S=pl.col("value")
+            .rolling_mean(window_size=2)
+            .over("variable", order_by="t"),
         )
-        .with_columns(D=(pl.col("diff") ** 2) / 4)
+        .with_columns((pl.selectors.by_name("D", "S") ** 2) / 4)
         .group_by("t")
-        .agg((pl.selectors.all() - pl.selectors.contains("variable")).mean())
+        .agg((~pl.selectors.by_name("variable")).mean())
         .sort("t")
         .with_columns(
             DPD=(pl.col("D") - pl.col("D").median())
