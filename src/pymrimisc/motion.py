@@ -66,3 +66,28 @@ def get_dvars(x: np.ndarray) -> pl.DataFrame:
         .fill_null(0)
     )
     return out
+
+
+def add_fd(d: pl.DataFrame, radius: float = 50.0) -> pl.DataFrame:
+    return (
+        d.sort("t")
+        .with_columns(
+            rot_x_mm=pl.col("rot_x") * radius,
+            rot_y_mm=pl.col("rot_y") * radius,
+            rot_z_mm=pl.col("rot_z") * radius,
+            trans_x_mm=pl.col("trans_x"),
+            trans_y_mm=pl.col("trans_y"),
+            trans_z_mm=pl.col("trans_z"),
+        )
+        .with_columns(pl.selectors.ends_with("_mm").diff().abs())
+        .with_columns(
+            FD=pl.col("rot_x_mm")
+            + pl.col("rot_y_mm")
+            + pl.col("rot_z_mm")
+            + pl.col("trans_x")
+            + pl.col("trans_y")
+            + pl.col("trans_z")
+        )
+        .drop(pl.selectors.ends_with("_mm"))
+        .fill_null(0)
+    )
