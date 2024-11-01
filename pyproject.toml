@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "nibabel>=5.2.1",
-    "numpy>=2.1.1",
+    "numpy",
     "polars>=1.7.1",
     "scipy>=1.14.1",
 ]
