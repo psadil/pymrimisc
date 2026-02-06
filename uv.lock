@@ -99,10 +99,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "nibabel", specifier = ">=5.2.1" },
-    { name = "numpy", specifier = ">=2.1.1" },
-    { name = "polars", specifier = ">=1.7.1" },
-    { name = "scipy", specifier = ">=1.14.1" },
+    { name = "nibabel" },
+    { name = "numpy" },
+    { name = "polars" },
+    { name = "scipy" },
 ]
 
 [[package]]

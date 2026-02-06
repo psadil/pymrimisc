@@ -1,6 +1,6 @@
 import numpy as np
 import polars as pl
-from scipy import stats
+from scipy import stats, signal
 
 
 def sd_hIQR(x, d=1):
@@ -32,7 +32,6 @@ def get_zd(D: pl.Series) -> np.ndarray:
 
 
 def get_dvars(x: np.ndarray) -> pl.DataFrame:
-
     # normalize
     X = x.copy()
     X = X / np.median(np.mean(X, axis=0)) * 100
@@ -56,9 +55,7 @@ def get_dvars(x: np.ndarray) -> pl.DataFrame:
         .agg((~pl.selectors.by_name("variable")).mean())
         .sort("t")
         .with_columns(
-            DPD=(pl.col("D") - pl.col("D").median())
-            / pl.col("A").mean()
-            * 100,
+            DPD=(pl.col("D") - pl.col("D").median()) / pl.col("A").mean() * 100,
             ZD=pl.col("D").map_batches(get_zd),
             DVARS=pl.col("D").sqrt() * 2,
         )
@@ -81,7 +78,7 @@ def add_fd(d: pl.DataFrame, radius: float = 50.0) -> pl.DataFrame:
         )
         .with_columns(pl.selectors.ends_with("_mm").diff().abs())
         .with_columns(
-            FD=pl.col("rot_x_mm")
+            framewise_displacement=pl.col("rot_x_mm")
             + pl.col("rot_y_mm")
             + pl.col("rot_z_mm")
             + pl.col("trans_x_mm")
@@ -91,3 +88,18 @@ def add_fd(d: pl.DataFrame, radius: float = 50.0) -> pl.DataFrame:
         .drop(pl.selectors.ends_with("_mm"))
         .fill_null(0)
     )
+
+
+def find_peak_freq(
+    series: pl.Series, tr: float, lower: float = 0.1, upper: float = 0.4
+) -> float:
+    x, y = signal.periodogram(series.to_numpy(), fs=1 / tr)
+    xi = np.where(np.logical_and(x >= lower, x <= upper))
+    yy = y[xi]
+    xx = x[xi]
+    return xx[np.where(yy == np.max(yy))][0]
+
+
+def filter_band_stop(series: pl.Series, tr: float, bw: float, w0: float) -> pl.Series:
+    b, a = signal.iirnotch(w0=w0, Q=w0 / bw, fs=1 / tr)
+    return pl.Series(signal.filtfilt(b, a, series.to_numpy()))
